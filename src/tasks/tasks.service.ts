@@ -1,41 +1,24 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { Task, TaskStatus } from './tasks.model';
-import * as uuid from 'uuid/v1';
+import { Injectable, NotFoundException, Inject } from '@nestjs/common';
 import { CreateTaskDto } from './dto/create-task-dto';
 import { GetTaskFilterDto } from './dto/get-task-filter.dto';
+import { TaskRepository } from './task.repository';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Task } from './task.entity';
+import { TaskStatus } from './task-status.enum';
 
 @Injectable()
 export class TasksService {
-  // this creates an array and allows the array to only be used here within the service file to not be mutated by other files.
-  private tasks: Task[] = [];
+  constructor(
+    @InjectRepository(TaskRepository)
+    private taskRepository: TaskRepository,
+  ) { }
 
-  // This methods allows the controller to get all task
-  getAllTasks(): Task[] {
-    return this.tasks;
+  async getTask(filterDto: GetTaskFilterDto): Promise<Task[]> {
+    return this.taskRepository.getTasks(filterDto);
   }
 
-  // This method allows controller to get a task with filters
-  getTasksWithFilters(filterDto: GetTaskFilterDto): Task[] {
-    const { status, search } = filterDto;
-    let tasks = this.getAllTasks();
-
-    if (status) {
-      tasks = tasks.filter(task => task.status === status);
-    }
-
-    if (search) {
-      tasks = tasks.filter(
-        task => task.title.includes(search) ||
-          task.description.includes(search),
-      );
-    }
-
-    return tasks;
-  }
-
-  // this method allows the controller to get a specific task by ID
-  getTaskById(id: string): Task {
-    const found = this.tasks.find(task => task.id === id);
+  async getTaskById(id: number): Promise<Task> {
+    const found = await this.taskRepository.findOne(id);
 
     if (!found) {
       throw new NotFoundException(`Task with ID '${id}' not found`);
@@ -44,31 +27,24 @@ export class TasksService {
     return found;
   }
 
-  // this method allows the controller to create a new task
-  createTask(createTaskDto: CreateTaskDto): Task {
-    const { title, description } = createTaskDto;
+  async createTask(createTaskDto: CreateTaskDto): Promise<Task> {
+    return this.taskRepository.createTask(createTaskDto);
+  }
 
-    const task: Task = {
-      id: uuid(),
-      title,
-      description,
-      status: TaskStatus.OPEN,
-    };
+  async deleteTask(id: number): Promise<void> {
+    const result = await this.taskRepository.delete(id);
 
-    this.tasks.push(task);
-    return task;
+    if (result.affected === 0) {
+      throw new NotFoundException(`Task with ID '${id}' was not found`);
+    }
   }
 
   // this allows the controller to get a specific task by id and update a task accordingly
-  updateTaskStatus(id: string, status: TaskStatus): Task {
-    const task = this.getTaskById(id);
+  async updateTaskStatus(id: number, status: TaskStatus) {
+    const task = await this.getTaskById(id);
     task.status = status;
+    await task.save();
     return task;
   }
 
-  // this allows the controller to get a specific task by id and delete at will
-  deleteTask(id: string): void {
-    const found = this.getTaskById(id);
-    this.tasks = this.tasks.filter(task => task.id !== found.id);
-  }
 }
