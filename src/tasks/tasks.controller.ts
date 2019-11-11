@@ -24,7 +24,7 @@ export class TasksController {
   }
 
   // This get method handles reuqest for a specific task using params of task ID
-  @Get(':id')
+  @Get('/:id')
   getTaskById(
     @Param('id', ParseIntPipe) id: number,
     @GetUser() user: User,
@@ -43,7 +43,7 @@ export class TasksController {
   }
 
   // this Delete method allows a user to find a specific task and delete at will
-  @Delete(':id')
+  @Delete('/:id')
   deleteTask(
     @Param('id', ParseIntPipe) id: number,
     @GetUser() user: User,
@@ -52,7 +52,7 @@ export class TasksController {
   }
 
   // This Patch method allows a user to grab a specific task and update its contents accordingly to user request
-  @Patch(':id/status')
+  @Patch('/:id/status')
   updateTaskStatus(
     @Param('id', ParseIntPipe) id: number,
     @Body('status', TaskStatusValidationPipe) status: TaskStatus,
